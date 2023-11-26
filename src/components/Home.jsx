@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import app from '../firebase-config'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, getDoc, setDoc } from 'firebase/firestore'
+import Swal from 'sweetalert2'
 
 //getFirestores, getFirestore,collection, addDoc,getDocs,doc,deleteDoc .. gestion de la base de datos NoSql
 const auth = getAuth(app)
@@ -27,31 +28,59 @@ export default function Home({ correoUsuario }) {
     const capturarDatos = (e) => {
         const { name, value } = e.target
         setUser({ ...user, [name]: value })
-        console.log('---- data ----', setUser)
     }
 
     // ------------------------- Persistencia en la base de datos  ------------------------
 
     const guardarDatos = async (e) => {
-        e.preventDefault()
-
+        e.preventDefault();
         try {
-
-            if (!title) {
-                await addDoc(collection(db, "agenda"), user);
-
+            if (!user.id) {
+                Swal.fire({
+                    title: '¿Está seguro de agregar el cliente?',
+                    text: user.nombre,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Si',
+                    cancelButtonText: 'No',
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            await addDoc(collection(db, "agenda"), user);
+                            document.getElementById('nombre').focus();
+                            setUser(persona);
+                            await obtenerDatos();
+                        } catch (error) {
+                            console.log(error);
+                        }
+                    }
+                });
             } else {
-                await setDoc(doc(db, "agenda", user.id), { ...user })
-
-                setTitle(false);
+                Swal.fire({
+                    title: '¿Está seguro de actualizar el cliente?',
+                    text: user.nombre,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Si',
+                    cancelButtonText: 'No',
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        try {
+                            await setDoc(doc(db, "agenda", user.id), { ...user });
+                            document.getElementById('nombre').focus();
+                            setTitle(false);
+                            setUser(persona);
+                            await obtenerDatos();
+                        } catch (error) {
+                            console.log(error);
+                        }
+                    }
+                });
             }
-            setUser(persona)
-            obtenerDatos();
         } catch (e) {
             console.log("Error adding/updating document: ", e);
         }
-
-    }
+    };
 
 
     const obtenerDatos = async () => {
@@ -82,25 +111,32 @@ export default function Home({ correoUsuario }) {
         }
     }
 
-    const deleteUser = async (id) => {
+    const deleteUser = async (id, user) => {
 
-        const confirmarDelete = window.confirm('¿Estás seguro de eliminar este registro? ')
+        Swal.fire({
+            title: `¿Está seguro de eliminar el cliente? ${user.nombre}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Si',
+            cancelButtonText: 'No',
+        }).then(async (result) => { // async: es para que espere a que se ejecute await y luego continue el codigo
+            if (result.isConfirmed) {
+                try {
+                    await deleteDoc(doc(db, "agenda", id)) // elimnina el docuemnto de la base datos 
+                    await obtenerDatos()
 
-        if (confirmarDelete) {
-            try {
-                await deleteDoc(doc(db, "agenda", id)) // elimnina el docuemnto de la base datos 
-                obtenerDatos()
-            } catch (e) {
-                console.log(e)
+                } catch (error) {
+                    console.log(error)
+                }
             }
-
-            alert('se ha eliminado correctamente el registro...')
-        }
+        })
     }
 
     useEffect(() => {
+        //fucus en el campo name con el id**
+        document.getElementById('nombre').focus()
         obtenerDatos()
-    }, [])
+    }, [user])
 
     return (
         <div className='container'>
@@ -115,6 +151,7 @@ export default function Home({ correoUsuario }) {
                         placeholder="Ingrese su nombre"
                         className="form-control mb-2"
                         name='nombre'
+                        id='nombre'
                         required
                         value={user.nombre}
                         onChange={capturarDatos}
@@ -176,7 +213,7 @@ export default function Home({ correoUsuario }) {
                                 <td>{item.telefono}</td>
                                 <td>{item.edad}</td>
                                 <td>
-                                    <button className="btn btn-danger btn-sm mx-2" onClick={() => deleteUser(item.id)} >Eliminar</button>
+                                    <button className="btn btn-danger btn-sm mx-2" onClick={() => deleteUser(item.id, item)} >Eliminar</button>
                                     <button className="btn btn-warning btn-sm mx-2" onClick={() => updateUser(item.id)}>Editar</button>
                                 </td>
                             </tr>
