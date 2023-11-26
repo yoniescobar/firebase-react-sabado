@@ -37,16 +37,20 @@ export default function Home({ correoUsuario }) {
 
         try {
 
-            const docRef = await addDoc(collection(db, "agenda"), user);// Guarda los datos en la bd
-            console.log("Documento data ---- ", docRef.id); //el id del documento
-            setUser(persona) // setea el objeto con valores vacios ''
-            alert('Se ha guardado correctamente....!')
-            obtenerDatos() // actualizar la lista
-            setTitle(false)
-        } catch (e) {
-            console.log("Error en agregar documento: ", e)
+            if (!title) {
+                await addDoc(collection(db, "agenda"), user);
 
+            } else {
+                await setDoc(doc(db, "agenda", user.id), { ...user })
+
+                setTitle(false);
+            }
+            setUser(persona)
+            obtenerDatos();
+        } catch (e) {
+            console.log("Error adding/updating document: ", e);
         }
+
     }
 
 
@@ -67,7 +71,7 @@ export default function Home({ correoUsuario }) {
             const docSnap = await getDoc(docRef) // obtine los datos del docum
 
             if (docSnap.exists()) { // si existe el documento
-                setUser({ ...docSnap.data() }) //enviamos los datos del documento al formulario
+                setUser({ ...docSnap.data(), id: docSnap.id }) //enviamos los datos del documento al formulario
                 setTitle(true)
             } else {
                 console.log('El documento no existe')
